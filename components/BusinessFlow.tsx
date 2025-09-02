@@ -22,7 +22,6 @@ interface BusinessFlowProps {
 }
 
 export default function BusinessFlow({ slug }: BusinessFlowProps) {
-  // API Configuration
   const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
   const OPENAI_API_KEY = process.env.OPENAI_API_KEY!;
@@ -43,7 +42,6 @@ export default function BusinessFlow({ slug }: BusinessFlowProps) {
     message: ''
   });
 
-  // Load business data from Supabase based on slug
   useEffect(() => {
     loadBusinessData();
   }, [slug]);
@@ -52,8 +50,6 @@ export default function BusinessFlow({ slug }: BusinessFlowProps) {
     try {
       setIsLoading(true);
 
-      // Create a simple mapping for demo purposes
-      // In production, you'd have a slug column or use business name to slug conversion
       const slugToIdMap: { [key: string]: string } = {
         'sushi-grill': '16',
         'john-does-restaurant': '15',
@@ -62,12 +58,10 @@ export default function BusinessFlow({ slug }: BusinessFlowProps) {
       const businessId = slugToIdMap[slug];
       
       if (!businessId) {
-        // Business not found
         setIsLoading(false);
         return;
       }
       
-      // Fetch business data from Supabase clients table
       const businessResponse = await fetch(`${SUPABASE_URL}/rest/v1/clients?id=eq.${businessId}&select=*`, {
         headers: {
           'apikey': SUPABASE_ANON_KEY,
@@ -81,7 +75,6 @@ export default function BusinessFlow({ slug }: BusinessFlowProps) {
           const client = businessData[0];
           setBusiness(client);
           
-          // Parse keywords from the keywords string
           const keywordsList = client.keywords.split(',').map((keyword: string, index: number) => ({
             id: `${index + 1}`,
             keyword: keyword.trim()
@@ -96,7 +89,6 @@ export default function BusinessFlow({ slug }: BusinessFlowProps) {
     }
   };
 
-  // Generate review using OpenAI API
   const generateReview = async () => {
     if (!business) return;
     
@@ -146,7 +138,6 @@ Requirements:
     } catch (error) {
       console.error('Error generating review:', error);
       
-      // Fallback review
       const fallbackReview = `I had an amazing experience at ${business.business_name}! The ${selectedKeywords.slice(0, 2).join(' and ')} really stood out. I'll definitely be coming back and recommending this place to friends and family. Highly recommend!`;
       setGeneratedReview(fallbackReview);
       
@@ -155,44 +146,23 @@ Requirements:
     }
   };
 
-  // Copy review and redirect to Google
   const copyToClipboard = async () => {
     if (!business) return;
     
     try {
       await navigator.clipboard.writeText(generatedReview);
-      
-      // In production, redirect to actual Google Reviews
       window.open(business.google_reviews_link, '_blank');
-      
     } catch (err) {
       alert('Review copied! Please paste it on Google Reviews.');
     }
   };
 
-  // Submit feedback to Supabase and email business owner
   const submitFeedback = async () => {
     if (!business) return;
     
     setIsSubmitting(true);
     
     try {
-      // Save to Supabase (you'd need to create a feedback_submissions table)
-      const response = await fetch(`${SUPABASE_URL}/rest/v1/feedback_submissions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-        },
-        body: JSON.stringify({
-          business_id: business.id,
-          customer_email: contactForm.email,
-          message: contactForm.message,
-        }),
-      });
-
-      // Send email via EmailJS
       const emailData = {
         to_email: business.client_email,
         from_email: contactForm.email,
@@ -227,7 +197,6 @@ Requirements:
     }
   };
 
-  // Auto-generate review when reaching review step
   useEffect(() => {
     if (step === 'review' && selectedKeywords.length > 0 && !generatedReview) {
       generateReview();
@@ -255,7 +224,6 @@ Requirements:
 
   return (
     <div className="min-h-screen" style={{ background: `linear-gradient(to bottom right, ${business.theme_colour}20, ${business.theme_colour}10)` }}>
-      {/* Progress Bar */}
       <div className="w-full bg-white shadow-sm">
         <div className="max-w-md mx-auto px-4 py-3">
           <div className="flex items-center justify-center space-x-2">
@@ -274,7 +242,6 @@ Requirements:
 
       <div className="container mx-auto px-4 py-8 max-w-md">
         
-        {/* Step 1: Experience Rating */}
         {step === 'experience' && (
           <Card className="shadow-xl border-0">
             <CardHeader className="text-center pb-6">
@@ -304,7 +271,6 @@ Requirements:
           </Card>
         )}
 
-        {/* Step 2a: Negative Feedback Path */}
         {step === 'feedback' && (
           <Card className="shadow-xl border-0">
             <CardHeader className="text-center pb-6">
@@ -328,7 +294,154 @@ Requirements:
                 onClick={() => window.open(business.google_reviews_link, '_blank')}
                 variant="outline"
                 className="w-full h-16 text-lg font-semibold border-2 rounded-xl transition-all hover:scale-105"
-                                      style={{ borderColor: business.theme_colour, color: business.theme_colour }}
+                style={{ borderColor: business.theme_colour, color: business.theme_colour }}
+              >
+                <ExternalLink className="mr-2 h-6 w-6" />
+                Express publicly on Google
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {step === 'contact' && (
+          <Card className="shadow-xl border-0">
+            <CardHeader className="text-center pb-6">
+              <CardTitle className="text-2xl font-bold text-gray-800">
+                Contact Our Manager
+              </CardTitle>
+              <p className="text-gray-600 mt-2">
+                We'll get back to you within 24 hours
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Input
+                type="email"
+                placeholder="Your email address"
+                value={contactForm.email}
+                onChange={(e) => setContactForm({...contactForm, email: e.target.value})}
+                className="h-12 rounded-xl"
+              />
+              <Textarea
+                placeholder="Tell us about your experience and how we can improve..."
+                value={contactForm.message}
+                onChange={(e) => setContactForm({...contactForm, message: e.target.value})}
+                className="min-h-32 rounded-xl"
+              />
+              <Button 
+                onClick={submitFeedback}
+                disabled={!contactForm.email || !contactForm.message || isSubmitting}
+                className="w-full h-12 font-semibold rounded-xl shadow-lg"
+                style={{ backgroundColor: business.theme_colour }}
+              >
+                {isSubmitting ? (
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                ) : (
+                  <Send className="mr-2 h-5 w-5" />
+                )}
+                {isSubmitting ? 'Sending...' : 'Send Feedback'}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {step === 'keywords' && (
+          <Card className="shadow-xl border-0">
+            <CardHeader className="text-center pb-6">
+              <CardTitle className="text-2xl font-bold text-gray-800">
+                What made your visit special?
+              </CardTitle>
+              <p className="text-gray-600 mt-2">
+                Select the aspects that describe your experience
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3 mb-6">
+                {keywords.map((keyword) => (
+                  <div key={keyword.id} className="flex items-center space-x-3">
+                    <Checkbox 
+                      id={keyword.id}
+                      checked={selectedKeywords.includes(keyword.keyword)}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setSelectedKeywords([...selectedKeywords, keyword.keyword]);
+                        } else {
+                          setSelectedKeywords(selectedKeywords.filter(k => k !== keyword.keyword));
+                        }
+                      }}
+                      className="rounded-lg"
+                    />
+                    <label 
+                      htmlFor={keyword.id} 
+                      className="flex-1 text-sm font-medium cursor-pointer p-3 rounded-xl border-2 border-gray-200 hover:border-gray-300 transition-all hover:shadow-sm"
+                    >
+                      {keyword.keyword}
+                    </label>
+                  </div>
+                ))}
+              </div>
+              
+              {selectedKeywords.length > 0 && (
+                <div className="mb-6 p-4 bg-gray-50 rounded-xl">
+                  <p className="text-sm font-medium text-gray-700 mb-2">Selected keywords:</p>
+                  <p className="text-sm text-gray-600">{selectedKeywords.join(', ')}</p>
+                </div>
+              )}
+              
+              <Button 
+                onClick={() => setStep('review')}
+                disabled={selectedKeywords.length === 0}
+                className="w-full h-12 font-semibold rounded-xl shadow-lg transition-all hover:scale-105"
+                style={{ backgroundColor: business.theme_colour }}
+              >
+                Generate My Review
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {step === 'review' && (
+          <Card className="shadow-xl border-0">
+            <CardHeader className="text-center pb-6">
+              <CardTitle className="text-2xl font-bold text-gray-800">
+                Your Review
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isGenerating && (
+                <div className="text-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-gray-800" />
+                  <p className="text-gray-600">Creating your personalized review...</p>
+                </div>
+              )}
+
+              {generatedReview && !isGenerating && (
+                <>
+                  <div className="bg-gray-50 p-4 rounded-xl mb-6 border-2 border-gray-200">
+                    <p className="text-gray-800 leading-relaxed">{generatedReview}</p>
+                  </div>
+
+                  <div className="bg-blue-50 p-4 rounded-xl mb-6 text-sm text-gray-700 leading-relaxed">
+                    <strong>Our Terms:</strong> By submitting your review, you understand that our AI-generated content is designed to streamline the review process while accurately reflecting your thoughts and feelings about the establishment.
+                  </div>
+
+                  <div className="space-y-3">
+                    <Button 
+                      onClick={copyToClipboard}
+                      className="w-full h-12 font-semibold rounded-xl shadow-lg transition-all hover:scale-105"
+                      style={{ backgroundColor: business.theme_colour }}
+                    >
+                      <Copy className="mr-2 h-5 w-5" />
+                      Copy and Continue to Google
+                    </Button>
+                    <Button 
+                      onClick={() => {
+                        setGeneratedReview('');
+                        generateReview();
+                      }}
+                      variant="outline"
+                      disabled={isGenerating}
+                      className="w-full h-12 font-semibold rounded-xl border-2 transition-all hover:scale-105"
+                      style={{ borderColor: business.theme_colour, color: business.theme_colour }}
                     >
                       <RefreshCw className={`mr-2 h-5 w-5 ${isGenerating ? 'animate-spin' : ''}`} />
                       Regenerate Review
@@ -340,11 +453,10 @@ Requirements:
           </Card>
         )}
 
-        {/* Back Button */}
         {step !== 'experience' && (
           <div className="mt-6 text-center">
             <Button 
-              variant="ghost" 
+              variant="ghost"
               onClick={() => {
                 if (step === 'keywords') setStep('experience');
                 else if (step === 'review') setStep('keywords');
@@ -358,7 +470,6 @@ Requirements:
           </div>
         )}
 
-        {/* Footer */}
         <div className="mt-8 text-center text-sm text-gray-500">
           <p>Powered by Reviewly</p>
         </div>
