@@ -1,12 +1,4 @@
 /** @type {import('next').NextConfig} */
-const nextConfig = {
-  experimental: {
-    appDir: true,
-  },
-  async generateStaticParams() {
-    // This will be populated with your business slugs
-    return [];
-  }
-};
+const nextConfig = {}
 
-module.exports = nextConfig;
+module.exports = nextConfig
