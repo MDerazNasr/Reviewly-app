@@ -46,48 +46,52 @@ export default function BusinessFlow({ slug }: BusinessFlowProps) {
     loadBusinessData();
   }, [slug]);
 
-  const loadBusinessData = async () => {
-    try {
-      setIsLoading(true);
+// Replace the loadBusinessData function in your components/BusinessFlow.tsx with this:
 
-      const slugToIdMap: { [key: string]: string } = {
-        'sushi-grill': '16',
-        'john-does-restaurant': '15',
-      };
+const loadBusinessData = async () => {
+  try {
+    setIsLoading(true);
 
-      const businessId = slugToIdMap[slug];
-      
-      if (!businessId) {
-        setIsLoading(false);
-        return;
+    // Fetch ALL businesses from Supabase
+    const businessResponse = await fetch(`${SUPABASE_URL}/rest/v1/clients?select=*`, {
+      headers: {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
       }
+    });
+    
+    if (businessResponse.ok) {
+      const businessData = await businessResponse.json();
       
-      const businessResponse = await fetch(`${SUPABASE_URL}/rest/v1/clients?id=eq.${businessId}&select=*`, {
-        headers: {
-          'apikey': SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-        }
+      // Find business by matching slug to generated slug from business_name
+      const matchingBusiness = businessData.find((client: any) => {
+        const generatedSlug = client.business_name
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-') // Replace non-alphanumeric with hyphens
+          .replace(/^-|-$/g, ''); // Remove leading/trailing hyphens
+        
+        return generatedSlug === slug;
       });
       
-      if (businessResponse.ok) {
-        const businessData = await businessResponse.json();
-        if (businessData.length > 0) {
-          const client = businessData[0];
-          setBusiness(client);
-          
-          const keywordsList = client.keywords.split(',').map((keyword: string, index: number) => ({
+      if (matchingBusiness) {
+        setBusiness(matchingBusiness);
+        
+        // Parse keywords from the keywords string
+        if (matchingBusiness.keywords) {
+          const keywordsList = matchingBusiness.keywords.split(',').map((keyword: string, index: number) => ({
             id: `${index + 1}`,
             keyword: keyword.trim()
           }));
           setKeywords(keywordsList);
         }
       }
-    } catch (error) {
-      console.error('Error loading data from Supabase:', error);
-    } finally {
-      setIsLoading(false);
     }
-  };
+  } catch (error) {
+    console.error('Error loading data from Supabase:', error);
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const generateReview = async () => {
     if (!business) return;
